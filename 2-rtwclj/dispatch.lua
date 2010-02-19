@@ -2,41 +2,44 @@ socket = require("socket")
 
 function serve()
 	local lsock = assert(socket.bind("*", 7002))
-	lsock:settimeout(0)
+	local coros = {}
 	local socks = {}
+	lsock:settimeout(0.01)
 
-	function accept()
+	local function accept()
 		local sock = lsock:accept()
 		if sock ~= nil then
-			cli:settimeout(0)
-			table.insert(socks, sock)
+			sock:settimeout(0.41)
+			table.insert(coros, coroutine.create(function () dispatch(sock) end))
 		end
-		coroutine.yield()
-		accept()
+		for _, co in ipairs(coros) do coroutine.resume(co) end 	
+		return accept()
 	end
 
-	function dispatch()
-		for _, sock in ipairs(socket.select(socks, nil, 50) do
-			msg, er = cli:receive()
-			if msg ~= nil then sendtoall(msg) end
+	function dispatch(sock)
+		table.insert(socks, sock)
+		local i = # socks
+		sock:send("!Hello!")	
+		local er = nil
+		while er ~= 'closed' do
+			msg, er = sock:receive()
+			coroutine.yield()
+			if msg ~= nil then 
+				print "sending" 
+				sendtoall(msg)
+				-- coroutine.yield()
+			end
 		end
-		coroutine.yield()
-		dispatch()
+		table.remove(socks, i)
 	end
 
 	function sendtoall(msg)
-		for _, cli in ipairs(clis) do cli:send(msg) end
+		for _, sock in ipairs(socks) do sock:send(msg) end
 	end
 
-	local coros = {}
-	table.insert(coros, coroutine.create(function () accept() end))
-	table.insert(coros, coroutine.create(function () dispatch() end))
-
-	while 1 do
-		for _, co in coros do coroutine.resume(co) end
-	end
-
+	accept()
 	lsock:close()
 end
 
+serve()
 
