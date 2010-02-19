@@ -3,36 +3,34 @@
 -define(TCP_OPTIONS,[list, {packet, 0}, {active, false}, {reuseaddr, true}]).
 
 listen(Port) ->
-    register(manager, spawn(fun() -> manage_clients([]) end)),
+    register(manager, spawn(fun() -> manage([]) end)),
     {ok, LSock} = gen_tcp:listen(Port, ?TCP_OPTIONS),
-    do_accept(LSock).
+    accept(LSock).
 
-do_accept(LSock) ->
+accept(LSock) ->
     {ok, Sock} = gen_tcp:accept(LSock),
-    spawn(fun() -> handle_client(Sock) end),
-    manager ! {connect, Sock},
-    do_accept(LSock).
+    spawn(fun() -> cli_hello(Sock) end),
+    manager ! {new, Sock},
+    accept(LSock).
 
-manage_clients(Socks) ->
+manage(Socks) ->
     receive
-        {connect, Sock} -> 
-			gen_tcp:send(Sock, "!Welcome!")
-			NewSocks = [Sock | Socks];
-        {disconnect, Sock} -> 
-			NewSocks = lists:delete(Sock, Socks);
-        {data, Data} -> 
-			send_to_all(Socks, Data), 
+        {new, Sock} -> NewSocks = [Sock | Socks];
+        {died, Sock} -> NewSocks = lists:delete(Sock, Socks);
+        {event, Data} -> send_all(Socks, Data), 
 			NewSocks = Socks
     end,
-    manage_clients(NewSocks).
+    manage(NewSocks).
 
-handle_client(Sock) ->
+cli_hello(Sock) ->
+	gen_tcp:send(Sock, "!Welcome!"),
+	cli_dispatch(Sock).
+
+cli_dispatch(Sock) ->
     case gen_tcp:recv(Sock, 0) of
-        {ok, Data} -> manager ! {data, Data}, handle_client(Sock);
-        {error, closed} -> manager ! {disconnect, Sock}
+        {ok, Data} -> manager ! {event, Data}, cli_dispatch(Sock);
+        {error, closed} -> manager ! {died, Sock}
     end.
 
-send_to_all(Socks, Data) ->
-    lists:foreach(
-		fun(Sock) -> gen_tcp:send(Sock, Data) end, Socks
-	).
+send_all(Socks, Data) ->
+    lists:foreach(fun(Sock) -> gen_tcp:send(Sock, Data) end, Socks).

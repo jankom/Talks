@@ -1,45 +1,41 @@
 socket = require("socket")
 
-function serve()
-	local lsock = assert(socket.bind("*", 7002))
+function serve(port)
+	local lsock = assert(socket.bind("*", port))
 	local coros = {}
-	local socks = {}
 	lsock:settimeout(0.01)
 
-	local function accept()
+	function run()
 		local sock = lsock:accept()
 		if sock ~= nil then
-			sock:settimeout(0.41)
-			table.insert(coros, coroutine.create(function () dispatch(sock) end))
+			sock:settimeout(0.01)
+			coros[sock] = coroutine.create(function () dispatch(sock) end)
 		end
-		for _, co in ipairs(coros) do coroutine.resume(co) end 	
-		return accept()
+		for sock, co in pairs(coros) do 
+			if coroutine.status(co) == 'dead' then coros[sock] = nil
+			else coroutine.resume(co) end 
+		end 	
+		return run()
 	end
 
 	function dispatch(sock)
-		table.insert(socks, sock)
-		local i = # socks
 		sock:send("!Hello!")	
-		local er = nil
-		while er ~= 'closed' do
-			msg, er = sock:receive()
+		repeat 
+			local msg, er = sock:receive()
 			coroutine.yield()
 			if msg ~= nil then 
-				print "sending" 
 				sendtoall(msg)
-				-- coroutine.yield()
 			end
-		end
-		table.remove(socks, i)
+		until er == 'closed'
 	end
 
 	function sendtoall(msg)
-		for _, sock in ipairs(socks) do sock:send(msg) end
+		for sock, _ in pairs(coros) do sock:send(msg) end
 	end
 
-	accept()
+	run()
 	lsock:close()
 end
 
-serve()
+serve(7002)
 

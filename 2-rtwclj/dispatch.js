@@ -1,28 +1,28 @@
 var tcp = require("tcp");
-var CLIENTS = [];
+var socks = [];
 
 var server = tcp.createServer(
-	function (socket) {
+	function (sock) {
 	
-		CLIENTS.push(socket);
-		socket.setTimeout(0);
+		socks.push(sock);
+		sock.setTimeout(0);
 
-		socket.addListener("connect", function () {
-			socket.send("!Welcome!\n");
+		sock.addListener("connect", function () {
+			sock.send("!Welcome!\n");
 		});
 
-		socket.addListener("receive", function (data) {
-			arr_each(CLIENTS, function(c) {
+		sock.addListener("receive", function (data) {
+			arr_each(socks, function(c) {
 				c.send(data);
 			});
 		});
 
-		socket.addListener("eof", function() {
-			socket.close();
+		sock.addListener("eof", function() {
+			sock.close();
 		});
 
-		socket.addListener("close", function() {
-			arr_remove(CLIENTS, socket);
+		sock.addListener("close", function() {
+			arr_remove(socks, sock);
 		});
 	}
 );
