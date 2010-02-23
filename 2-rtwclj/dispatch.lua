@@ -1,64 +1,41 @@
-function list_iter (t)
-  local i = 0
-  local n = table.getn(t)
-  return function ()
-		   i = i + 1
-		   if i <= n then return t[i] end
-		 end
-end
+socket = require("socket")
 
-function serve()
-	local sock = require("socket")
-	local srv = assert(sock.bind("*", 9049))
-	local clients = {}
-	print ("server created 9049")
+function serve(port)
+	local lsock = assert(socket.bind("*", port))
+	local coros = {}
+	lsock:settimeout(0.01)
 
-	function acceptClients()
-		srv:settimeout(0)
-		local client = srv:accept()
-		if client ~= nil then
-			print("accepted con")
-			cli:settimeout(0.01)
-			table.insert(clients, client)
+	function run()
+		local sock = lsock:accept()
+		if sock ~= nil then
+			sock:settimeout(0.01)
+			coros[sock] = coroutine.create(function () dispatch(sock) end)
 		end
-		coroutine.yield()
+		for sock, co in pairs(coros) do 
+			if coroutine.status(co) == 'dead' then coros[sock] = nil
+			else coroutine.resume(co) end 
+		end 	
+		return run()
 	end
 
-	function dispatchMessages()
-		for client in list_iter(socket.select(clients, nil, 50) do
-			msg, er = cli:receive()
-			if msg ~= nil then
-				if msg == "[STOP]" then cli:close()
-				else sendToAll(msg) end
-				print("sending>> " .. msg)
-			end
+	function dispatch(sock)
+		sock:send("!Hello!")	
+		repeat 
+			local msg, er = sock:receive()
 			coroutine.yield()
-		end
+			if msg ~= nil then 
+				sendtoall(msg)
+			end
+		until er == 'closed'
 	end
 
-	function sendToAll(msg)
-		for cli in list_iter(clis) do 
-			cli:send(msg)
-			coroutine.yield() 
-		end
+	function sendtoall(msg)
+		for sock, _ in pairs(coros) do sock:send(msg) end
 	end
 
-	function closeClients()
-		for cli in list_iter(clis) do cli:close() end
-	end
-
-	while 1 do
-		acceptClients()
-		dispatchMessages()
-	end
-
-	closeClients()
-	srv:close()
+	run()
+	lsock:close()
 end
 
-local coServe = coroutine.create(function () serve() end)
-
-while coroutine.status(coServe) ~= "dead" do
-	coroutine.resume(coServe)
-end
+serve(7002)
 

@@ -1,39 +1,41 @@
 var tcp = require("tcp");
+var socks = [];
 
-Array.prototype.remove = function(e) {
-	for (var i = 0; i < this.length; i++)
-		if (e == this[i]) return this.splice(i, 1);
-}
-
-Array.prototype.each = function(fn) {
-	for (var i = 0; i < this.length; i++) fn(this[i]);
-}
-
-var clients = [];
-
-var server = tcp.createServer(function (socket) {
+var server = tcp.createServer(
+	function (sock) {
 	
-	clients.push(socket);
+		socks.push(sock);
+		sock.setTimeout(0);
 
-	socket.setTimeout(0);
-
-	socket.addListener("connect", function () {
-		socket.send("s> Welcome!\n");
-	});
-
-	socket.addListener("receive", function (data) {
-		clients.each(function(c) {
-			c.send("e> " + data);
+		sock.addListener("connect", function () {
+			sock.send("!Welcome!\n");
 		});
-	});
 
-	socket.addListener("eof", function() {
-		socket.close();
-	});
+		sock.addListener("receive", function (data) {
+			arr_each(socks, function(c) {
+				c.send(data);
+			});
+		});
 
-	socket.addListener("close", function() {
-		clients.remove(socket);
-	});
-});
+		sock.addListener("eof", function() {
+			sock.close();
+		});
 
-server.listen(7000);
+		sock.addListener("close", function() {
+			arr_remove(socks, sock);
+		});
+	}
+);
+
+// helper functions
+arr_remove = function(arr, e) {
+	for (var i = 0; i < arr.length; i++)
+		if (e == arr[i]) return arr.splice(i, 1);
+}
+
+arr_each = function(arr, fn) {
+	for (var i = 0; i < arr.length; i++) fn(arr[i]);
+}
+
+// run it
+server.listen(7002);
