@@ -5,16 +5,19 @@ Programiranje strežnikov za RT internet
 
 Primerjava: Events/Callbacks (node.js), Coroutines (Lua), Actors/Message passing (Erlang)
 
+datoteke
+--------
+
 dispatcher.[js|lua|erl] : koda za serverček, ki smo ga primerjali
 rtwclj.jar : jar (jvm) demo client v processing-u
-app/ : linux app za demo z izvorno kodo
+app/ : linux app za demo client z izvorno kodo
 
 testiranje v commandlinu
 ------------------------
 
 >> nc localhost 7002
 
+------------------------
 
-"slide" s sličicami bom dodal kmalu.
-
+"slide" s sličicami bom dodal kmalu, samo da usposobim qwikislide
 
