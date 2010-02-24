@@ -10,7 +10,7 @@ datoteke
 
 dispatcher.[js|lua|erl] : koda za serverček, ki smo ga primerjali
 rtwclj.jar : jar (jvm) demo client v processing-u
-app/ : linux app za demo client z izvorno kodo
+app/ : linux app za demo client z izvorno kodo v processing-u
 
 testiranje v commandlinu
 ------------------------
